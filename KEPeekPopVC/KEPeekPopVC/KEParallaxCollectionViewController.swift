@@ -13,7 +13,7 @@ protocol KEParallaxCollectionViewControllerDelegate: NSObject {
     func allClicked()
 }
 
-class KEParallaxCollectionViewController: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, KEParallaxCellDelegate {
+class KEParallaxCollectionViewController: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, KEParallaxCellDelegate, UIViewControllerPreviewingDelegate, UIPopoverPresentationControllerDelegate {
 
     @IBOutlet weak var collectionView: UICollectionView!
     var itemArray: [(color: UIColor, title: String, price: CGFloat, discountedPrice: CGFloat?)]?
@@ -33,7 +33,8 @@ class KEParallaxCollectionViewController: UIViewController, UICollectionViewDele
     var offsetScroll1 : CGFloat = 0
     var offsetScroll2 : CGFloat = 0
     var isPagingEnabled: Bool = true
-
+    var previewingContext: UIViewControllerPreviewing?
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -45,6 +46,42 @@ class KEParallaxCollectionViewController: UIViewController, UICollectionViewDele
         self.collectionView.collectionViewLayout = flowLayout
         self.collectionView.backgroundColor = backgroundColor
     }
+    
+    func previewingContext(_ previewingContext: UIViewControllerPreviewing, viewControllerForLocation location: CGPoint) -> UIViewController? {
+        let vc = UIStoryboard(name: "Main", bundle: nil).instantiateViewController(withIdentifier: "ViewController") as? ViewController
+        vc?.preferredContentSize = CGSize(width: 400, height: 400)
+        previewingContext.sourceRect = self.view.convert(collectionView.frame, from: self.view)
+        return vc
+    }
+    
+    func previewingContext(_ previewingContext: UIViewControllerPreviewing, commit viewControllerToCommit: UIViewController) {
+        viewControllerToCommit.preferredContentSize = CGSize(width: 400, height: 400)
+        let navc = UINavigationController(rootViewController: viewControllerToCommit)
+        navc.navigationItem.title = "Peek & Pop"
+        navc.modalPresentationStyle = .popover
+        let popover = navc.popoverPresentationController as! UIPopoverPresentationController
+        popover.delegate = self
+        popover.sourceView = self.collectionView
+        popover.sourceRect = CGRect(x: 0, y: 0, width: 0, height: 0)
+        popover.permittedArrowDirections = .any
+        present(navc, animated: true, completion: nil)
+    }
+    
+//    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+//        // Update the app's 3D Touch support.
+//        if self.traitCollection.forceTouchCapability == .available {
+//            // Enable 3D Touch features
+//            if self.previewingContext == nil {
+//                self.previewingContext = registerForPreviewing(with: self, sourceView: self.collectionView)
+//            }
+//        }
+//        else {
+//            if self.previewingContext != nil {
+//                unregisterForPreviewing(withContext: previewingContext!)
+//                self.previewingContext = nil
+//            }
+//        }
+//    }
         
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
         if isPagingEnabled {
@@ -114,6 +151,12 @@ class KEParallaxCollectionViewController: UIViewController, UICollectionViewDele
             cell.delegate = self
             cell.tag = indexPath.row
             cell.btnOnCell.tag = indexPath.row
+
+            // Check the trait collection to see if force is available.
+            if self.traitCollection.forceTouchCapability == .available {
+                // Enable 3D Touch features
+                self.previewingContext = registerForPreviewing(with: self, sourceView: cell)
+            }
         }
         return cell
     }
